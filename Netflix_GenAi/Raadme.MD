@@ -1,300 +1,434 @@
-# AI & Machine Learning Pipeline for Netflix Content Analytics
+# Intelligent Netflix Content Analytics Pipeline
 
-This project implements an **end-to-end AI and Machine Learning pipeline** for analyzing the Netflix catalog (`netflix_titles.csv`). It combines **feature engineering**, **unsupervised anomaly detection**, **local Large Language Model (LLM) reasoning**, and a **conversational data analysis agent** running locally with **Ollama (gemma2:2b)**. The system identifies unusual content in the dataset and enables users to explore the data using natural language.
+## Overview
 
----
+This project combines **Machine Learning**, **Data Analytics**, and **Generative AI (LLM)** to analyze the Netflix Catalog Dataset.
 
-# 🛠️ Detailed Component Breakdown
+Instead of only performing statistical analysis, the system:
 
-## 1. Data Processing & Feature Engineering
-
-The pipeline begins by loading the raw Netflix metadata into a Pandas DataFrame.
-
-### Data Ingestion
-- Loads the `netflix_titles.csv` dataset.
-- Performs preprocessing and handles missing values where necessary.
-
-### Feature Engineering
-
-Several numerical features are extracted because machine learning models cannot directly process raw text.
-
-#### Runtime Extraction (`duration_num`)
-Converts duration strings such as:
-
-- `"90 min"` → `90`
-- `"120 min"` → `120`
-
-into numerical values.
-
-#### Content Addition Year (`added_year`)
-Extracts the year from the `date_added` column.
-
-Example:
-
-- `"September 9, 2021"` → `2021`
-
-#### Platform Delay (`platform_delay`)
-Calculates how long it took for content to appear on Netflix.
-
-Formula:
-
-```text
-platform_delay = added_year - release_year
-```
-
-Example:
-
-| Release Year | Added Year | Platform Delay |
-|--------------|------------|----------------|
-| 1995 | 2020 | 25 years |
-
-This feature helps identify unusually old content that was acquired much later.
+- Cleans and prepares Netflix metadata.
+- Detects unusual (anomalous) titles using Machine Learning.
+- Uses a Local Large Language Model (LLM) to generate strategic business insights.
+- Allows users to ask natural language questions about the dataset using LangChain.
 
 ---
 
-# 2. Machine Learning Anomaly Detection
+# Project Architecture
 
-The project applies an **Isolation Forest**, an unsupervised anomaly detection algorithm.
+The project contains three major components:
 
-### Model
+1. Data Engineering
+2. Machine Learning (Isolation Forest)
+3. Generative AI + LangChain Agent
 
-```text
-IsolationForest(
-    contamination=0.01
-)
+---
+
+# Libraries Used
+
+## 1. NumPy
+
+```python
+import numpy as np
 ```
-
-### Input Features
-
-The model trains using:
-
-- `duration_num`
-- `release_year`
-- `platform_delay`
 
 ### Purpose
 
-Rather than predicting categories, the model isolates titles whose numerical characteristics differ significantly from the rest of the Netflix catalog.
+NumPy provides fast numerical operations.
+
+Although it is not heavily used in this project, it is commonly imported because many data science libraries depend on it internally.
+
+---
+
+## 2. Pandas
+
+```python
+import pandas as pd
+```
+
+### Purpose
+
+Pandas is the main library used for data manipulation.
+
+Used for:
+
+- Loading CSV files
+- Cleaning data
+- Creating new columns
+- Filtering rows
+- Handling missing values
+
+Example:
+
+```python
+df = pd.read_csv(...)
+```
+
+---
+
+## 3. LangChain Core
+
+```python
+from langchain_core.prompts import PromptTemplate
+```
+
+### What is LangChain?
+
+LangChain is a framework that connects Large Language Models (LLMs) with external tools such as:
+
+- DataFrames
+- Databases
+- PDFs
+- APIs
+- Search engines
+
+It allows the LLM to reason over real-world data instead of relying only on its training.
+
+---
+
+### PromptTemplate
+
+PromptTemplate creates structured prompts dynamically.
+
+Instead of writing a fixed prompt, placeholders are used.
+
+Example:
+
+```python
+PromptTemplate.from_template(
+"Title: {title}
+Genre: {genre}"
+)
+```
+
+Later:
+
+```python
+prompt.invoke({
+"title":"Titanic",
+"genre":"Drama"
+})
+```
+
+Result:
+
+```
+Title: Titanic
+Genre: Drama
+```
+
+This makes prompts reusable and organized.
+
+---
+
+## 4. LangChain Experimental
+
+```python
+from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
+```
+
+### Purpose
+
+This creates an AI agent capable of interacting directly with a Pandas DataFrame.
+
+Instead of manually writing pandas code, users can ask questions in plain English.
+
+Example:
+
+> Which country has the most TV Shows?
+
+The agent automatically:
+
+1. Understands the question.
+2. Writes pandas operations internally.
+3. Executes them.
+4. Returns the answer.
+
+This enables natural language interaction with structured data.
+
+---
+
+## 5. LangChain Ollama
+
+```python
+from langchain_ollama import ChatOllama
+```
+
+### Purpose
+
+This connects LangChain with Ollama to run local Large Language Models.
+
+In this project:
+
+```python
+llm = ChatOllama(model="gemma2:2b")
+```
+
+The Gemma 2B model runs locally, meaning:
+
+- No internet required
+- Data remains private
+- No API costs
+- Faster inference on local hardware
+
+---
+
+## 6. Isolation Forest
+
+```python
+from sklearn.ensemble import IsolationForest
+```
+
+### Purpose
+
+Isolation Forest is an unsupervised anomaly detection algorithm.
+
+Unlike classification models, it does not require labeled data.
+
+It identifies observations that differ significantly from the rest of the dataset.
 
 Examples of anomalies include:
 
 - Extremely long movies
-- Very short content
-- Very old titles
-- Titles added decades after release
-
-With:
-
-```text
-contamination = 0.01
-```
-
-the model flags approximately the **top 1% most unusual titles**.
+- Very old content added recently
+- Rare metadata combinations
 
 ---
 
-# 3. Local LLM & Strategic Diagnostic Briefs
+# Step-by-Step Workflow
 
-After anomaly detection, the project uses a **local Large Language Model** running through **Ollama**.
-
-### Local Inference
-
-Model used:
-
-```text
-gemma2:2b
-```
-
-running entirely on the user's machine.
-
-### Prompt Engineering
-
-Metadata from the most anomalous title is inserted into a structured prompt.
-
-Example information supplied:
-
-- Title
-- Release Year
-- Duration
-- Platform Delay
-- Content Type
-
-### LLM Role
-
-The model acts as a:
-
-> **Senior Content Acquisition Strategist**
-
-and produces a concise three-point strategic report explaining:
-
-- Why the title appears anomalous
-- Which characteristics make it unusual
-- Whether acquiring similar content is strategically beneficial
-
-This transforms numerical anomaly detection into business-oriented insights.
-
----
-
-# 4. Cross-Architecture Integration & Interactive Agent
-
-The machine learning output is merged back into the dataset.
-
-### Data Fusion
-
-A new boolean column is added:
+## Step 1 – Load Dataset
 
 ```python
-df["is_anomaly"]
+df = pd.read_csv(...)
 ```
 
-This indicates whether each title was classified as an anomaly.
+The Netflix dataset is loaded into a Pandas DataFrame.
+
+---
+
+## Step 2 – Feature Engineering
+
+New numerical features are created.
+
+### duration_num
+
+Extracts numerical runtime.
 
 Example:
 
-| Title | is_anomaly |
-|--------|------------|
-| Movie A | False |
-| Movie B | True |
+```
+"90 min" → 90
+```
 
 ---
 
-## Conversational Pandas Agent
+### added_year
 
-The project initializes LangChain's:
+Extracts the year from the `date_added` column.
+
+Example:
+
+```
+September 9, 2019
+↓
+
+2019
+```
+
+---
+
+### platform_delay
+
+Calculates how many years passed before Netflix added the content.
+
+Formula:
+
+```
+Platform Delay
+
+= Added Year − Release Year
+```
+
+Example:
+
+```
+Released: 1998
+
+Added: 2020
+
+Delay = 22 years
+```
+
+---
+
+## Step 3 – Machine Learning
+
+Features used:
+
+```
+duration_num
+
+release_year
+
+platform_delay
+```
+
+Isolation Forest analyzes these numerical attributes.
+
+Each title receives:
+
+- Normal
+- Anomaly
+
+Only anomalies are selected.
+
+---
+
+## Step 4 – LLM Strategy Generation
+
+The first anomaly is sent to the LLM.
+
+Prompt contains:
+
+- Title
+- Runtime
+- Genres
+- Country
+- Release Year
+- Description
+
+The LLM acts as a Content Acquisition Strategist.
+
+Instead of predicting numbers, it explains:
+
+- Why the title is unusual
+- Whether similar content should be acquired
+- Business implications
+
+This transforms numerical results into executive-level insights.
+
+---
+
+## Step 5 – Create DataFrame Agent
 
 ```python
-create_pandas_dataframe_agent()
+agent = create_pandas_dataframe_agent(...)
 ```
 
-which allows users to interact with the dataset using natural language.
+This allows users to ask questions such as:
 
-Example questions include:
+- Which country produced the most movies?
+- Show all anomalies.
+- Average movie duration.
+- Top genres.
+- Which year had the highest number of releases?
 
-- How many titles were flagged as anomalies?
-- Show the oldest movies.
-- Which country has the most TV Shows?
-- List movies longer than 180 minutes.
-- What is the average platform delay?
-
-The agent automatically:
-
-1. Understands the user's question.
-2. Converts it into Pandas code.
-3. Executes the code.
-4. Returns the answer.
-
-No manual coding is required from the user.
+The AI automatically converts these questions into Pandas operations.
 
 ---
 
-## Interactive CLI Loop
+## Step 6 – Interactive Chat Loop
 
-The application continuously accepts user queries using a terminal interface.
+The program continuously accepts user questions.
 
-Example workflow:
+Example:
 
-```text
+```
 User:
-How many anomaly titles exist?
-
-↓
-
-LLM Agent
-
-↓
-
-Generated Pandas Code
-
-↓
-
-Dataset Execution
-
-↓
-
-Answer Returned
+Which country has the most movies?
 ```
 
-The session continues until the user types:
+↓
 
-```text
+LangChain Agent
+
+↓
+
+Pandas
+
+↓
+
+Result
+
+↓
+
+Displayed to the user
+
+The loop continues until the user types:
+
+```
 exit
 ```
 
 or
 
-```text
+```
 quit
 ```
 
 ---
 
-# ⚙️ Overall Architectural Pipeline
+# Overall System Flow
 
-```text
-                   netflix_titles.csv
-                           │
-                           ▼
-        ┌────────────────────────────────────┐
-        │ Data Cleaning & Feature Engineering │
-        │                                    │
-        │ • duration_num                     │
-        │ • added_year                       │
-        │ • platform_delay                   │
-        └────────────────────────────────────┘
-                           │
-                           ▼
-        ┌────────────────────────────────────┐
-        │      Isolation Forest Model        │
-        │                                    │
-        │ Detects Top 1% Anomalous Titles    │
-        └────────────────────────────────────┘
-                           │
-            ┌──────────────┴──────────────┐
-            ▼                             ▼
- ┌──────────────────────┐      ┌────────────────────────┐
- │ Add df['is_anomaly'] │      │  Top Anomaly Metadata  │
- └──────────────────────┘      └────────────────────────┘
-            │                             │
-            │                             ▼
-            │              ┌────────────────────────────┐
-            │              │ Local LLM (Gemma2:2B)      │
-            │              │ Strategic Diagnostic Brief │
-            │              └────────────────────────────┘
-            │
-            ▼
- ┌────────────────────────────────────────────┐
- │ LangChain Pandas DataFrame Agent           │
- │                                            │
- │ Natural Language → Pandas Code → Answer    │
- └────────────────────────────────────────────┘
-            │
-            ▼
-    Interactive Command-Line Interface (CLI)
+```
+Netflix Dataset
+        │
+        ▼
+ Data Cleaning
+        │
+        ▼
+Feature Engineering
+        │
+        ▼
+Isolation Forest
+        │
+        ▼
+Detected Anomalies
+        │
+        ▼
+PromptTemplate
+        │
+        ▼
+Gemma 2B (Ollama)
+        │
+        ▼
+Business Strategy Brief
+        │
+        ▼
+LangChain DataFrame Agent
+        │
+        ▼
+Natural Language Questions
+        │
+        ▼
+Automatic Pandas Analysis
 ```
 
 ---
 
-# Key Technologies Used
+# Key Technologies
 
-| Component | Technology |
-|----------|------------|
-| Data Processing | Pandas |
-| Feature Engineering | Python |
-| Machine Learning | Scikit-learn (Isolation Forest) |
-| Local LLM | Ollama (Gemma2:2B) |
-| Prompt Engineering | LangChain PromptTemplate |
-| AI Framework | LangChain |
-| Conversational Data Analysis | Pandas DataFrame Agent |
-| User Interface | Interactive CLI |
+| Technology | Purpose |
+|------------|---------|
+| Pandas | Data loading, cleaning, manipulation |
+| NumPy | Numerical computing support |
+| Scikit-learn | Isolation Forest anomaly detection |
+| LangChain Core | Prompt engineering and LLM orchestration |
+| PromptTemplate | Dynamic prompt creation |
+| LangChain Experimental | AI-powered Pandas DataFrame agent |
+| Ollama | Runs local LLMs |
+| Gemma 2B | Generates strategic business insights |
+| Isolation Forest | Detects unusual catalog entries |
 
 ---
 
-# Project Highlights
+# Final Outcome
 
-- Performs automated feature engineering on raw Netflix metadata.
-- Detects anomalous content using the Isolation Forest algorithm.
-- Generates business-oriented strategic insights with a local LLM.
-- Combines machine learning predictions with conversational AI.
-- Enables natural language querying of structured data through LangChain.
-- Runs entirely on a local machine without requiring cloud-based inference.
-- Demonstrates an integrated AI pipeline that blends classical machine learning with modern generative AI.
+This project demonstrates an end-to-end AI analytics pipeline that integrates:
+
+- Data Engineering for preprocessing and feature extraction.
+- Machine Learning for anomaly detection using Isolation Forest.
+- Generative AI to transform detected anomalies into strategic business insights.
+- LangChain-powered conversational analytics, enabling users to query the dataset in natural language.
+
+The result is an intelligent decision-support system that combines statistical analysis with LLM-based reasoning to produce actionable content strategy recommendations.
