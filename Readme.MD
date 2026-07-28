@@ -1,6 +1,6 @@
 # Intelligent Netflix Content Analytics Pipeline
 
-**Prepared & Submitted By:** AJAY BASKEY & PRAKHAR JAIN
+**Prepared & Submitted By:** AJAY BASKEY , PRAKHAR JAIN & ROSHAN SHARMA
 
 
 This project presents an **intelligent content analytics pipeline** for streaming platforms using the **Netflix Catalog Dataset (`netflix_titles.csv`)**. By combining **data engineering**, **unsupervised machine learning**, and **local Generative AI**, the system transforms raw entertainment metadata into actionable strategic business insights. The pipeline not only detects unusual content within the catalog but also provides AI-generated business recommendations and enables natural language interaction with the dataset.
