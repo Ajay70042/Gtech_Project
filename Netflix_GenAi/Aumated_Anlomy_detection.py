@@ -11,7 +11,7 @@ from sklearn.ensemble import IsolationForest
 # STEP 1: LOAD & PREPARE DATASET
 # =====================================================================
 print("📥 Loading Netflix Catalog Dataset...")
-df = pd.read_csv('netflix_titles.csv')
+df = pd.read_csv("C:\\Users\\ajayb\\Documents\\Gtech_project\\netflix_titles.csv")
 
 # Feature Engineering for Anomaly Detection
 df['duration_num'] = df['duration'].str.extract(r'(\d+)').astype(float)
